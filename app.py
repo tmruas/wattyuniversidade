@@ -58,12 +58,13 @@ def render_mermaid(codigo_mermaid):
 # ==========================================
 st.set_page_config(page_title="Super Tutor", page_icon="🎓", layout="wide")
 
-# TRUQUE DE DESIGN: Esconder o menu de edição do Streamlit para parecer uma App Profissional!
+
+# TRUQUE DE DESIGN MELHORADO: Esconder botões chatos, mas manter a setinha lateral!
 esconder_menu = """
     <style>
     #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
     footer {visibility: hidden;}
+    .stDeployButton {display:none;} /* Esconde apenas o botão de Deploy */
     </style>
     """
 st.markdown(esconder_menu, unsafe_allow_html=True)
@@ -284,3 +285,4 @@ elif modo == "🧠 Mind Maps (Visual Overview)":
                     render_mermaid(resposta_mapa.text)
         else:
             st.warning("Tell me the topic so I can organize the information! ✏️")
+
