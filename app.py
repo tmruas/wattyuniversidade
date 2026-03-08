@@ -229,45 +229,51 @@ elif modo == "🏋️ Practice (Fun Quizzes)":
                     # Se não tiver a password ===ANSWERS===, significa que ele se recusou a fazer o quiz (o que é bom!)
                     st.warning("⚠️ " + resposta_quiz.text)
 
-# --- MODO 3: RESUMOS ---
 elif modo == "📖 Learn (Ninja Summaries)":
     st.title(f"🥷 Straight-to-the-Point Summaries: {cadeira_escolhida}")
     st.write("I'll read your PDFs and give you just the juice of the subject!")
     
-    tema_resumo = st.text_input("Which concept or chapter do you want to master today?")
+    # Atualizámos a caixa de texto para avisar que pode ficar em branco
+    tema_resumo = st.text_input("🎯 Which concept do you want to master today? (Leave blank for a MEGA SUMMARY of the whole course):", placeholder="E.g., Signalling, Tesla Case...")
     
     if st.button("✨ Create Magic Summary"):
-        if tema_resumo:
-            with st.spinner(f"Devouring the {cadeira_escolhida} PDFs... 📚🤓"):
-                texto_materia = ler_pdfs_da_cadeira(cadeira_escolhida)
-                if texto_materia == "":
-                    st.warning(f"No PDFs found in 'documentos/{cadeira_escolhida}'.")
+        with st.spinner(f"Devouring the {cadeira_escolhida} PDFs... 📚🤓"):
+            texto_materia = ler_pdfs_da_cadeira(cadeira_escolhida)
+            if texto_materia == "":
+                st.warning(f"No PDFs found in 'documentos/{cadeira_escolhida}'.")
+            else:
+                # O Watty ajusta a instrução dependendo se escreveste algo ou não
+                if tema_resumo:
+                    foco = f"Create a highly engaging and structured summary about the specific topic: '{tema_resumo}'."
+                    regra_anti_alucinacao = f"If the topic '{tema_resumo}' is NOT covered in the text at all, DO NOT create a summary. Instead, politely inform the student that this concept is not present in their uploaded notes and do not invent any connections. Stop writing."
+                    pesquisa_youtube = tema_resumo
                 else:
-                    instrucao_resumo = f"""
-                    Create a highly engaging and structured summary about the topic: "{tema_resumo}".
-                    All content MUST BE IN ENGLISH.
-                    
-                    CRITICAL ANTI-HALLUCINATION RULE:
-                    Use ONLY the information from the STUDENT'S NOTES below. 
-                    If the topic "{tema_resumo}" is NOT covered in the text at all, DO NOT create a summary. Instead, politely inform the student that this concept is not present in their uploaded notes and do not invent any connections. Stop writing.
-                    
-                    Use headers, bullet points, and emojis if you generate the summary.
-                    
-                    CRITICAL REQUIREMENT AT THE END (Only if summary is generated):
-                    Create a section titled "📺 Explore More on YouTube". Provide 2 search links using this format:
-                    * [🎥 Watch Top Videos on: Name of the concept](https://www.youtube.com/results?search_query=Name+of+the+concept)
-                    Replace spaces with '+' signs.
-                    
-                    STUDENT'S NOTES:
-                    {texto_materia}
-                    """
-                    resposta_resumo = modelo_gemini.generate_content(instrucao_resumo)
-                    st.balloons() 
-                    st.success("Summary check complete! 🎉")
-                    st.markdown(resposta_resumo.text)
-        else:
-            st.warning("Type the topic first! 😉")
+                    foco = f"Create a highly engaging, structured, and comprehensive MEGA SUMMARY of the ENTIRE provided course material for '{cadeira_escolhida}'."
+                    regra_anti_alucinacao = "Summarize the main overarching concepts found in the text. Do not include information that is not present in the provided notes."
+                    pesquisa_youtube = cadeira_escolhida
 
+                instrucao_resumo = f"""
+                {foco}
+                All content MUST BE IN ENGLISH.
+                
+                CRITICAL ANTI-HALLUCINATION RULE:
+                Use ONLY the information from the STUDENT'S NOTES below. 
+                {regra_anti_alucinacao}
+                
+                Use clear headers (H2, H3), bullet points, and emojis to make it easy to read.
+                
+                CRITICAL REQUIREMENT AT THE END (Only if summary is generated):
+                Create a section titled "📺 Explore More on YouTube". Provide 2 search links using this exact format:
+                * [🎥 Watch Top Videos on: {pesquisa_youtube}](https://www.youtube.com/results?search_query=Name+of+the+concept)
+                Replace spaces in the URL with '+' signs.
+                
+                STUDENT'S NOTES:
+                {texto_materia}
+                """
+                resposta_resumo = modelo_gemini.generate_content(instrucao_resumo)
+                st.balloons() 
+                st.success("Summary check complete! 🎉")
+                st.markdown(resposta_resumo.text)
 # --- MODO 4: MAPAS MENTAIS ---
 elif modo == "🧠 Mind Maps (Visual Overview)":
     st.title(f"🗺️ Visual Mind Maps: {cadeira_escolhida}")
@@ -305,3 +311,4 @@ elif modo == "🧠 Mind Maps (Visual Overview)":
                         render_mermaid(resposta_mapa.text)
         else:
             st.warning("Tell me the topic so I can organize the information! ✏️")
+
