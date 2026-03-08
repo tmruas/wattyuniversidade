@@ -57,6 +57,15 @@ def render_mermaid(codigo_mermaid):
 # 1. Configuração da Página e Memória
 # ==========================================
 st.set_page_config(page_title="Super Tutor", page_icon="🎓", layout="wide")
+# Esconder o menu do Streamlit e a marca de água para um ar mais profissional
+esconder_menu = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+    """
+st.markdown(esconder_menu, unsafe_allow_html=True)
 
 if "mensagens_chat" not in st.session_state:
     st.session_state.mensagens_chat = []
@@ -269,4 +278,5 @@ elif modo == "🧠 Mind Maps (Visual Overview)":
                     st.success("Mind Map generated successfully! 🧠✨")
                     render_mermaid(resposta_mapa.text)
         else:
+
             st.warning("Tell me the topic so I can organize the information! ✏️")
