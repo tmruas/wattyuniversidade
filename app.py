@@ -57,7 +57,8 @@ def render_mermaid(codigo_mermaid):
 # 1. Configuração da Página e Memória
 # ==========================================
 st.set_page_config(page_title="Super Tutor", page_icon="🎓", layout="wide")
-# Esconder o menu do Streamlit e a marca de água para um ar mais profissional
+
+# TRUQUE DE DESIGN: Esconder o menu de edição do Streamlit para parecer uma App Profissional!
 esconder_menu = """
     <style>
     #MainMenu {visibility: hidden;}
@@ -121,7 +122,7 @@ with st.sidebar:
 # 3. Área Principal (Main Area)
 # ==========================================
 
-# --- MODO 1: CHAT SOCRÁTICO ---
+# --- MODO 1: CHAT SOCRÁTICO (AGORA COM MEMÓRIA!) ---
 if modo == "💬 Socratic Chat (Q&A)":
     st.title(f"🚀 Personal Tutor: {cadeira_escolhida}")
     st.write("Stuck on a complex concept? Let's untangle it together!")
@@ -138,12 +139,23 @@ if modo == "💬 Socratic Chat (Q&A)":
         st.chat_message("user").write(duvida_utilizador)
         st.session_state.mensagens_chat.append({"role": "user", "content": duvida_utilizador})
         
+        # A MAGIA DA MEMÓRIA: Criar o guião da conversa toda!
+        texto_historico = ""
+        for msg in st.session_state.mensagens_chat:
+            quem = "Student" if msg["role"] == "user" else "Watty"
+            texto_historico += f"{quem}: {msg['content']}\n"
+        
         instrucao_sistema = f"""
         You are Watty, a friendly university tutor for the course '{cadeira_escolhida}'.
         Your student has ADHD, so keep it concise, highly engaging, use emojis, and release dopamine!
         All your responses MUST BE IN ENGLISH.
         IMPORTANT: Use the Socratic method. NEVER give the final answer right away. Guide the student with thoughtful questions.
-        The student asks: {duvida_utilizador}
+        
+        --- CONVERSATION HISTORY ---
+        {texto_historico}
+        --- END OF HISTORY ---
+        
+        Based on the history above, reply to the Student's last message.
         """
         with st.spinner("Thinking of a ninja response... 🧠"):
             resposta_ai = modelo_gemini.generate_content(instrucao_sistema)
@@ -152,7 +164,7 @@ if modo == "💬 Socratic Chat (Q&A)":
         st.chat_message("assistant", avatar="🤖").write(texto_resposta)
         st.session_state.mensagens_chat.append({"role": "assistant", "content": texto_resposta})
 
-# --- MODO 2: QUIZZES (NOVA VERSÃO MASTERCLASS) ---
+# --- MODO 2: QUIZZES ---
 elif modo == "🏋️ Practice (Fun Quizzes)":
     st.title(f"🎮 Training Zone: {cadeira_escolhida}")
     st.write("Let's test your knowledge! Choose a specific topic or test the whole course.")
@@ -167,7 +179,6 @@ elif modo == "🏋️ Practice (Fun Quizzes)":
             else:
                 foco = f"Focus strictly on the topic: '{tema_quiz}'." if tema_quiz else "Cover general concepts from all the provided notes."
                 
-                # Instrução rigorosa para forçar a divisão entre perguntas e respostas
                 instrucao_quiz = f"""
                 You are a fun and enthusiastic professor. Create a 5-question quiz about {cadeira_escolhida}, based ONLY on the text below.
                 {foco}
@@ -194,21 +205,15 @@ elif modo == "🏋️ Practice (Fun Quizzes)":
                 st.snow() 
                 st.success("Challenge ready! Good luck! 🍀")
                 
-                # O Truque Ninja do Python: Separar o texto a meio!
                 if "===ANSWERS===" in resposta_quiz.text:
-                    # Cortamos o texto em duas partes
                     partes = resposta_quiz.text.split("===ANSWERS===")
                     perguntas = partes[0]
                     respostas = partes[1]
                     
-                    # Mostramos as perguntas normalmente
                     st.markdown(perguntas)
-                    
-                    # Escondemos as respostas dentro de um botão clicável!
                     with st.expander("👀 Done? Click here to reveal the Secret Answer Key!"):
                         st.markdown(respostas)
                 else:
-                    # Caso a IA falhe a regra do divisor, mostramos tudo junto para não perderes o quiz
                     st.markdown(resposta_quiz.text)
 
 # --- MODO 3: RESUMOS ---
@@ -278,5 +283,4 @@ elif modo == "🧠 Mind Maps (Visual Overview)":
                     st.success("Mind Map generated successfully! 🧠✨")
                     render_mermaid(resposta_mapa.text)
         else:
-
             st.warning("Tell me the topic so I can organize the information! ✏️")
