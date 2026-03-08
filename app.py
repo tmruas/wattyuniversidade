@@ -58,13 +58,11 @@ def render_mermaid(codigo_mermaid):
 # ==========================================
 st.set_page_config(page_title="Super Tutor", page_icon="🎓", layout="wide")
 
-
-# TRUQUE DE DESIGN MELHORADO: Esconder botões chatos, mas manter a setinha lateral!
 esconder_menu = """
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    .stDeployButton {display:none;} /* Esconde apenas o botão de Deploy */
+    .stDeployButton {display:none;}
     </style>
     """
 st.markdown(esconder_menu, unsafe_allow_html=True)
@@ -123,7 +121,7 @@ with st.sidebar:
 # 3. Área Principal (Main Area)
 # ==========================================
 
-# --- MODO 1: CHAT SOCRÁTICO (AGORA COM MEMÓRIA!) ---
+# --- MODO 1: CHAT SOCRÁTICO ---
 if modo == "💬 Socratic Chat (Q&A)":
     st.title(f"🚀 Personal Tutor: {cadeira_escolhida}")
     st.write("Stuck on a complex concept? Let's untangle it together!")
@@ -140,25 +138,34 @@ if modo == "💬 Socratic Chat (Q&A)":
         st.chat_message("user").write(duvida_utilizador)
         st.session_state.mensagens_chat.append({"role": "user", "content": duvida_utilizador})
         
-        # A MAGIA DA MEMÓRIA: Criar o guião da conversa toda!
         texto_historico = ""
         for msg in st.session_state.mensagens_chat:
             quem = "Student" if msg["role"] == "user" else "Watty"
             texto_historico += f"{quem}: {msg['content']}\n"
         
-        instrucao_sistema = f"""
-        You are Watty, a friendly university tutor for the course '{cadeira_escolhida}'.
-        Your student has ADHD, so keep it concise, highly engaging, use emojis, and release dopamine!
-        All your responses MUST BE IN ENGLISH.
-        IMPORTANT: Use the Socratic method. NEVER give the final answer right away. Guide the student with thoughtful questions.
-        
-        --- CONVERSATION HISTORY ---
-        {texto_historico}
-        --- END OF HISTORY ---
-        
-        Based on the history above, reply to the Student's last message.
-        """
         with st.spinner("Thinking of a ninja response... 🧠"):
+            texto_materia = ler_pdfs_da_cadeira(cadeira_escolhida)
+            
+            instrucao_sistema = f"""
+            You are Watty, a friendly university tutor for the course '{cadeira_escolhida}'.
+            Your student has ADHD, so keep it concise, highly engaging, use emojis, and release dopamine!
+            All your responses MUST BE IN ENGLISH.
+            IMPORTANT: Use the Socratic method. NEVER give the final answer right away.
+            
+            CRITICAL ANTI-HALLUCINATION RULE:
+            You must base your guidance ONLY on the COURSE MATERIAL provided below. 
+            If the student asks about a concept that is completely unrelated to the material below, politely but firmly inform them that the topic is outside the scope of this course. Do not try to force a connection!
+            
+            --- COURSE MATERIAL ---
+            {texto_materia}
+            --- END OF MATERIAL ---
+            
+            --- CONVERSATION HISTORY ---
+            {texto_historico}
+            --- END OF HISTORY ---
+            
+            Reply to the Student's last message based ONLY on the rules above.
+            """
             resposta_ai = modelo_gemini.generate_content(instrucao_sistema)
             texto_resposta = resposta_ai.text
             
@@ -181,9 +188,14 @@ elif modo == "🏋️ Practice (Fun Quizzes)":
                 foco = f"Focus strictly on the topic: '{tema_quiz}'." if tema_quiz else "Cover general concepts from all the provided notes."
                 
                 instrucao_quiz = f"""
-                You are a fun and enthusiastic professor. Create a 5-question quiz about {cadeira_escolhida}, based ONLY on the text below.
-                {foco}
+                You are a fun and enthusiastic professor. Create a 5-question quiz about {cadeira_escolhida}.
                 All content MUST BE IN ENGLISH.
+                
+                CRITICAL ANTI-HALLUCINATION RULE:
+                You must base the quiz ONLY on the STUDENT'S NOTES below. 
+                If the specific topic '{tema_quiz}' is completely unrelated to the text or not mentioned at all, DO NOT create a quiz. Instead, politely inform the student that this topic is not covered in the provided course materials and stop writing.
+                
+                {foco}
                 
                 QUIZ STRUCTURE (Exactly 5 Questions):
                 - Q1: Very Easy (Multiple Choice with A, B, C, D)
@@ -193,20 +205,19 @@ elif modo == "🏋️ Practice (Fun Quizzes)":
                 - Q5: Very Hard (Open-ended / Written answer required)
                 
                 FORMATTING RULES:
-                1. First, write ONLY the 5 questions. Use clear headers like "### 📝 Question 1 (Very Easy)".
-                2. Use bullet points for multiple-choice options.
-                3. CRITICAL RULE: After the 5th question, you MUST write EXACTLY this word on a new line:
+                1. Write ONLY the 5 questions first. Use headers like "### 📝 Question 1 (Very Easy)".
+                2. After the 5th question, write EXACTLY this word on a new line:
                 ===ANSWERS===
-                4. Below that word, write the "Secret Answer Key" with detailed explanations for all 5 questions.
+                3. Below that word, write the "Secret Answer Key" with detailed explanations.
                 
                 STUDENT'S NOTES:
                 {texto_materia}
                 """
                 resposta_quiz = modelo_gemini.generate_content(instrucao_quiz)
-                st.snow() 
-                st.success("Challenge ready! Good luck! 🍀")
                 
                 if "===ANSWERS===" in resposta_quiz.text:
+                    st.snow() 
+                    st.success("Challenge ready! Good luck! 🍀")
                     partes = resposta_quiz.text.split("===ANSWERS===")
                     perguntas = partes[0]
                     respostas = partes[1]
@@ -215,7 +226,8 @@ elif modo == "🏋️ Practice (Fun Quizzes)":
                     with st.expander("👀 Done? Click here to reveal the Secret Answer Key!"):
                         st.markdown(respostas)
                 else:
-                    st.markdown(resposta_quiz.text)
+                    # Se não tiver a password ===ANSWERS===, significa que ele se recusou a fazer o quiz (o que é bom!)
+                    st.warning("⚠️ " + resposta_quiz.text)
 
 # --- MODO 3: RESUMOS ---
 elif modo == "📖 Learn (Ninja Summaries)":
@@ -234,20 +246,24 @@ elif modo == "📖 Learn (Ninja Summaries)":
                     instrucao_resumo = f"""
                     Create a highly engaging and structured summary about the topic: "{tema_resumo}".
                     All content MUST BE IN ENGLISH.
-                    Use ONLY the information from the text below. Use headers, bullet points, and emojis.
                     
-                    CRITICAL REQUIREMENT AT THE END:
-                    At the very end of your response, create a section titled "📺 Explore More on YouTube".
-                    Create 2 search links for this topic using this exact markdown format:
+                    CRITICAL ANTI-HALLUCINATION RULE:
+                    Use ONLY the information from the STUDENT'S NOTES below. 
+                    If the topic "{tema_resumo}" is NOT covered in the text at all, DO NOT create a summary. Instead, politely inform the student that this concept is not present in their uploaded notes and do not invent any connections. Stop writing.
+                    
+                    Use headers, bullet points, and emojis if you generate the summary.
+                    
+                    CRITICAL REQUIREMENT AT THE END (Only if summary is generated):
+                    Create a section titled "📺 Explore More on YouTube". Provide 2 search links using this format:
                     * [🎥 Watch Top Videos on: Name of the concept](https://www.youtube.com/results?search_query=Name+of+the+concept)
-                    Replace spaces in the URL with '+' signs. DO NOT generate direct watch?v= links to avoid broken URLs.
+                    Replace spaces with '+' signs.
                     
                     STUDENT'S NOTES:
                     {texto_materia}
                     """
                     resposta_resumo = modelo_gemini.generate_content(instrucao_resumo)
                     st.balloons() 
-                    st.success("Summary created successfully! 🎉")
+                    st.success("Summary check complete! 🎉")
                     st.markdown(resposta_resumo.text)
         else:
             st.warning("Type the topic first! 😉")
@@ -268,21 +284,24 @@ elif modo == "🧠 Mind Maps (Visual Overview)":
                 else:
                     instrucao_mapa = f"""
                     You are an expert at creating visual mind maps using Mermaid.js. 
-                    Based ONLY on the text below, create a simple and clean mindmap about "{tema_mapa}".
-                    All content MUST BE IN ENGLISH.
                     
-                    OUTPUT RULES:
-                    - Output ONLY the mermaid code. Do NOT wrap it in ```mermaid ... ``` markdown, just output the raw code.
-                    - Keep node names simple and avoid special characters or long sentences.
+                    CRITICAL ANTI-HALLUCINATION RULE:
+                    Check if the topic "{tema_mapa}" exists in the STUDENT'S NOTES below. 
+                    If it does NOT exist, or is completely unrelated, reply EXACTLY with this phrase and nothing else: "ERROR: OUT OF SCOPE". Do not generate any mermaid code.
+                    
+                    If it DOES exist, output ONLY the valid mermaid code for the mindmap. Do NOT wrap it in ```mermaid ... ``` markdown, just output the raw code. Keep nodes simple.
                     
                     STUDENT'S NOTES:
                     {texto_materia}
                     """
                     resposta_mapa = modelo_gemini.generate_content(instrucao_mapa)
                     
-                    st.balloons() 
-                    st.success("Mind Map generated successfully! 🧠✨")
-                    render_mermaid(resposta_mapa.text)
+                    # Verificamos se o Watty ativou o erro de fora do âmbito
+                    if "ERROR: OUT OF SCOPE" in resposta_mapa.text:
+                        st.warning(f"⚠️ Watty couldn't find any information about '{tema_mapa}' in your '{cadeira_escolhida}' notes. Try a different topic!")
+                    else:
+                        st.balloons() 
+                        st.success("Mind Map generated successfully! 🧠✨")
+                        render_mermaid(resposta_mapa.text)
         else:
             st.warning("Tell me the topic so I can organize the information! ✏️")
-
